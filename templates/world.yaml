@@ -1,0 +1,55 @@
+# 世界设定库
+
+geography:
+  - id: example_location
+    name: ""
+    type: ""                    # 城市/宗门/秘境/国家/大陆
+    region: ""                  # 所属区域
+    description: ""
+    status: active              # active | destroyed | hidden | sealed
+    destroyed_chapter: null
+    notable_residents: []       # 当前驻扎的角色ID
+    distance_to:                # 到其他地点的距离/时间
+      # other_location_id: "步行15天|飞行3天|传送阵瞬间"
+    rules: []                   # 该地点的特殊规则（如"禁灵区域"）
+
+factions:
+  - id: example_faction
+    name: ""
+    type: ""                    # 宗门/帝国/商会/暗组织
+    leader: ""                  # 角色ID
+    members: []                 # 角色ID列表
+    stance: ""                  # 阵营立场
+    status: active              # active | disbanded | absorbed
+    relationships:              # 与其他势力的关系
+      - target: ""
+        type: ""                # 同盟/敌对/中立/附庸
+        since_chapter: 0
+    history: []                 # 势力重大事件 [{chapter, event}]
+
+power_system:
+  name: ""
+  ranks: []                    # 等级列表，从低到高
+  rules: []                    # 体系规则
+    # - description: ""
+    #   severity: hard          # hard | soft
+  special_cases: []            # 允许的特殊情况（如主角开挂的理由）
+    # - description: ""
+    #   justification: ""
+
+items:
+  - id: example_item
+    name: ""
+    type: ""                    # 武器/丹药/法宝/秘籍
+    current_owner: ""           # 角色ID
+    abilities: []
+    origin: ""                  # 来源
+    first_appeared: 0
+    ownership_history: []       # [{chapter, owner, how: "拾得/赠予/夺取/..."}]
+    notes: ""
+
+rules:
+  - id: ""
+    description: ""
+    severity: hard              # hard = 绝对不可违反 | soft = 需要理由
+    category: ""                # resurrection/movement/power/social/...

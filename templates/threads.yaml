@@ -1,0 +1,32 @@
+# 剧情线索库
+# 管"挖"和"填"——种下的伏笔必须收束
+
+threads:
+  - id: example_thread
+    description: ""             # 线索描述
+    category: ""                # mystery/relationship/power/prophecy/conspiracy/backstory
+    
+    # ── 种植 ──
+    planted_chapter: 0
+    planted_context: ""         # 在什么场景下种下的
+    planted_by: []              # 涉及的角色ID
+    
+    # ── 推进 ──
+    developments: []            # 中间推进记录
+      # - chapter: 0
+      #   description: ""
+    
+    # ── 收束 ──
+    resolved_chapter: null      # null = 未收束
+    resolved_how: ""
+    
+    # ── 重要性 ──
+    importance: major           # major | minor | easter_egg
+    urgency: normal             # critical | high | normal | low
+    expected_resolve_by: null   # 预期收束章节（超过后告警）
+    
+    # ── 关联 ──
+    related_threads: []         # 相关线索ID
+    related_characters: []
+    
+    notes: ""

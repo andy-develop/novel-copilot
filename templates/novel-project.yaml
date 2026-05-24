@@ -1,0 +1,30 @@
+# 小说项目元信息
+# 每部小说一个此文件，放在项目根目录
+
+meta:
+  title: ""                    # 书名
+  author: ""                   # 作者
+  genre: ""                    # 类型：修仙/都市/科幻/奇幻/悬疑...
+  target_words: 300000         # 目标总字数
+  current_words: 0             # 当前总字数
+  current_chapter: 0           # 当前章节号
+  created_at: ""               # 创建日期
+
+# 全局设定摘要（一句话概括，便于 AI 快速理解）
+premise: ""
+
+# 核心冲突（驱动全文的主线）
+core_conflict: ""
+
+# 预期结局方向（可选，留着发散用）
+intended_ending: ""
+
+# 写作偏好
+style:
+  pov: third_person_limited    # first_person | third_person_limited | third_person_omniscient | multi_pov
+  tense: past                  # past | present
+  tone: ""                     # 沉重/轻松/幽默/暗黑...
+  avg_words_per_chapter: 3000  # 每章平均字数
+
+# 角色视角优先级（多视角时决定谁的主场）
+pov_priority: []

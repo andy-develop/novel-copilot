@@ -1,0 +1,85 @@
+# 自动写作引擎配置
+# 控制全自动写作循环的参数
+
+mode: auto                       # auto = 全自动 | manual = 人机协作 | paused = 暂停
+
+# ── 写作目标 ──
+target_words: 300000             # 目标总字数
+target_chapters: null            # 目标总章数（null = 按字数决定）
+avg_words_per_chapter: 3000      # 每章平均字数
+
+# ── 一致性门控 ──
+consistency:
+  light_check_interval: 3        # 每N章执行一次轻检 (check_all)
+  deep_audit_interval: 10        # 每N章执行一次深审 (audit)
+  auto_fix: true                 # 自动修复发现的一致性错误
+  max_auto_fix_attempts: 2       # 同一问题最大自动修复尝试次数
+  halt_on_unfixable: false       # 遇到无法自动修复的硬冲突是否暂停（false=标记并继续）
+
+# ── 方向选择 ──
+selection:
+  # 评分模式: 7dim (默认, 7维度) 或 3dim (简化3维度)
+  scoring_mode: 7dim    # 7dim (default) or 3dim
+
+  # 评分权重（总和应为1.0）
+  weights:
+    rhythm_fit: 0.25             # 节奏适配度
+    drive_intensity: 0.20        # 翻页驱动力
+    thread_advancement: 0.15     # 线索推进
+    emotional_utilization: 0.15  # 情感债利用
+    consistency_score: 0.10      # 一致性安全
+    novelty: 0.10                # 新颖度
+    hook_strength: 0.05          # 钩子强度
+  
+  # 排雷规则
+  veto:
+    hard_rule_conflict: true     # 红灯一致性风险+hard规则冲突 → 一票否决
+    repeat_pattern_limit: 3      # 连续N章同一发散模式 → 排除
+    no_emotion_at_climax: true   # 假高潮/真高潮阶段选纯认知型 → 排除
+  
+  # 融合阈值：最高分与次高分差距小于此值时，尝试融合两个方向
+  merge_threshold: 0.5
+  
+  # 最低质量线：最高分低于此值时标记"方向质量不足"
+  min_score: 2.5
+
+# ── 节奏自调节 ──
+rhythm:
+  # 各阶段预计章数（一个弧线内）
+  arc_phases:
+    起势: {min: 3, max: 8, ideal: 5}
+    升压: {min: 5, max: 15, ideal: 10}
+    假高潮: {min: 1, max: 3, ideal: 2}
+    二次爬升: {min: 3, max: 10, ideal: 6}
+    真高潮: {min: 2, max: 5, ideal: 3}
+    落幕: {min: 2, max: 5, ideal: 3}
+  
+  # 张力调节
+  max_consecutive_high_tension: 2   # 连续高张力(8+)章数上限，超过插入缓冲
+  max_consecutive_low_tension: 3    # 连续低张力(<4)章数上限，超过强制升高
+  stale_thread_threshold: 15        # 线索停滞N章触发推进
+  absent_char_threshold: 20         # 角色缺席N章触发提及
+
+# ── 终局管理 ──
+endgame:
+  begin_at_percent: 80              # 在目标字数的x%时开始终局管理
+  block_new_major_threads: 95       # 在目标字数的x%时禁止新major线索
+  concept_echo: true                # 最终章呼应第1章核心意象
+  unresolved_thread_warn: 5         # 未收束major线索>N条时告警
+
+# ── 输出控制 ──
+output:
+  # 每章完成后的输出格式
+  chapter_summary: true             # 输出章节摘要
+  show_score_details: true          # 显示方向评分细节
+  show_consistency_report: true     # 显示一致性校验报告
+  milestone_interval: 10            # 每N章输出里程碑报告
+
+# ── 冲刺模式 ──
+sprint:
+  enabled: false               # true = organic sprint mode active
+  mode: organic                # organic = outline-driven, zero CLI | script = CLI-driven
+  consistency_interval: 5      # consistency check every N chapters (overrides light_check_interval in sprint)
+  force_sync_interval: 5       # force characters+debts sync every N chapters
+  skip_rhythm: true            # skip rhythm command in sprint mode
+  skip_score: true             # skip score command in sprint mode

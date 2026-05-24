@@ -1,0 +1,49 @@
+# 角色状态库
+# 每次角色状态变化时更新此文件
+
+characters:
+  - id: example_protagonist
+    name: ""
+    aliases: []                 # 别名/外号，全文搜索用
+    status: alive               # alive | dead | missing | sealed | transformed
+    
+    # ── 死亡相关（status=dead 时必填）──
+    death_chapter: null
+    death_cause: null
+    death_witnesses: []         # 谁目睹了死亡（用于验证死讯是否传开）
+    is_truly_dead: true         # false = 诈死/留有后手（必须有伏笔支撑）
+    
+    # ── 当前状态 ──
+    location: ""
+    condition: normal           # normal | injured | poisoned | crippled | recovering
+    condition_note: ""          # 如 "左臂缺失(第15章)"
+    
+    # ── 能力 ──
+    abilities: []               # 技能/功法列表
+    power_level: ""             # 修为/等级
+    power_changes: []           # 修为变化记录 [{chapter, from, to, cause}]
+    
+    # ── 关系 ──
+    relationships:
+      - target: ""
+        type: ""                # 师徒/父子/恋人/敌人/盟友...
+        since_chapter: 0
+        status: active          # active | broken | transformed
+        note: ""
+    
+    # ── 物品 ──
+    inventory: []               # 当前持有物品
+    inventory_history: []       # 物品变动 [{chapter, item, action: gained|lost|transferred, to_from: ""}]
+    
+    # ── 性格锚点（防止角色分裂）──
+    key_traits: []              # 如 ["沉默寡言", "重信守诺", "不善表达感情"]
+    speech_pattern: ""          # 说话风格，如 "简短有力，极少用语气词"
+    
+    # ── 伏笔标记 ──
+    secrets: []                 # 角色隐藏的秘密 [{description, planted_chapter, revealed_chapter}]
+    
+    # ── 元信息 ──
+    first_appeared: 0
+    last_appeared: 0
+    total_appearances: 0
+    notes: ""

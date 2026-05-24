@@ -1,0 +1,26 @@
+# 时间线
+# 按章节记录重大事件，校验时空逻辑
+
+# 世界时间体系
+time_system:
+  calendar: ""                  # 历法名称（如"北荒历"）
+  format: ""                    # 时间格式（如"北荒历1024年 春"）
+  start_date: ""                # 故事开始的日期
+
+# 各章事件
+chapters:
+  - chapter: 1
+    date: ""                    # 本章对应的世界时间
+    events:
+      - timestamp: ""
+        description: ""
+        characters: []          # 涉及角色ID
+        location: ""            # 发生地点ID
+        type: normal            # normal | flashback | flashforward | dream | vision
+        note: ""
+    time_elapsed: ""            # 本章时间跨度（如"三天"）
+    
+  - chapter: 2
+    date: ""
+    events: []
+    time_elapsed: ""
