@@ -10,7 +10,8 @@
 > 当从新会话续写已有项目时（用户说"继续"），必须先同步状态，再进入写作循环。
 
 ```
-1. 读取 novel-project.yaml → 获取 current_chapter 和 current_words
+1. git pull origin main  ← 先拉取最新代码（其他会话可能已推送新章节）
+2. 读取 novel-project.yaml → 获取 current_chapter 和 current_words
 2. 检查 state/arc-tracker.yaml → recent_patterns 和 recent_hooks 是否覆盖到 current_chapter
 3. 检查 state/characters.yaml → last_appeared 字段是否接近 current_chapter（差距>3说明严重过期）
 4. 检查 state/threads.yaml → developments 是否覆盖近5章（空数组=严重过期）
@@ -45,6 +46,14 @@ python3 scripts/auto_write.py init --name "书名" --dir ~/novels/name --mode au
 - `state/threads.yaml` — 初始线索（至少2-3条 major）
 - `state/emotional-debts.yaml` — 初始情感债
 - `state/arc-tracker.yaml` — 弧线起始状态
+
+**创建 GitHub 仓库**（每本小说一个仓库）：
+```bash
+cd ~/novels/name
+git init
+gh repo create andy-develop/name --private --source=. --push
+```
+这样所有章节、状态文件、大纲都有版本控制和远程备份。
 
 ### Step 2: 节奏分析
 
@@ -161,6 +170,28 @@ python3 scripts/consistency_checker.py audit ~/novels/name    # 深审
 ```
 
 如发现错误 → 执行 Module 7.2 的自动修复策略 → 验证修复
+
+### Step 6.5: Git 同步（每章必做⚠️）
+
+> 每个小说项目是一个 GitHub 仓库。每章写完 + 状态更新 + 一致性校验后，自动 commit & push。
+
+```bash
+cd ~/novels/name
+git add -A
+git commit -m "ch{NNN}: {章节标题}"
+git push origin main
+```
+
+**commit 消息格式**：
+- 普通章：`ch001: 午夜来电`
+- 卷完结：`ch030: 雷霆一击 [卷1完结]`
+- 全书完结：`ch090: 新世界 [全书完结]`
+- 纯状态更新（非写章）：`state: 同步characters+threads到ch045`
+
+**注意**：
+- commit 时机在 `commit_chapter.py` 之后、下一章开始之前
+- 不要在写章中途 commit（章正文+状态更新应是一个原子提交）
+- git push 失败不阻塞写作——下一章写完时重试即可
 
 ### Step 7: 终止检查
 

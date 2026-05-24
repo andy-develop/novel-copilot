@@ -8,14 +8,14 @@
 
 core fact: AI is the loop orchestrator, scripts are just decision aids.
 
-### v2.2 有机冲刺循环（commit_chapter 驱动）
+### v2.4 有机冲刺循环（commit_chapter + Git 驱动）
 
-> v2.2 改进：`commit_chapter.py` 省略 `--count-words` 时自动拼接路径；`auto_sync.py` 一键检测同步差距；同规则🟢建议>5条自动折叠。实测：90章连续写作，零手动 patch。
+> v2.4 改进：每章写完自动 git commit & push 到 GitHub 仓库；会话恢复时先 git pull。每个小说 = 一个 GitHub 仓库。
 
 > ⚠️ **核心原则：用户说"继续"=不间断冲刺。不要暂停问问题、不要输出中间统计、不要确认下一步。写就完了。**
 
 ```
-AI 每章循环 (v2.2 organic sprint):
+AI 每章循环 (v2.4 organic sprint):
 1. AI 心算当前弧线阶段 → 选择发散模式（零CLI）
 2. write_file: 写章节正文 ch{NNN}.md（路径必须三位零填充！ch080.md ✅ ch80.md ❌）
 3. terminal: commit_chapter.py --dir DIR --chapter N --title "标题" \
@@ -23,9 +23,11 @@ AI 每章循环 (v2.2 organic sprint):
      --thread-advance "T015:developed,T018:resolved:42"
    ↑ --count-words 已省略，v2.2 自动发现 chapters/chNNN.md
    ↑ 一条命令更新: novel-project.yaml + arc-tracker.yaml + threads.yaml + consistency-log.yaml
-4. 每N章: consistency_checker.py check DIR（N=3-5默认，同规则>5条🟢自动折叠）
+4. 每3-5章: consistency_checker.py check DIR（N=3-5默认，同规则>5条🟢自动折叠）
 5. 每5章: patch characters.yaml + emotional-debts.yaml（强制回写）
-6. 继续下一章（不停顿、不问用户）
+6. terminal: git add -A && git commit -m "ch{NNN}: 标题" && git push origin main
+   ↑ 每章自动同步到 GitHub
+7. 继续下一章（不停顿、不问用户）
 ```
 
 ### v2.0 循环（旧版，commit_chapter 引入前）
@@ -92,6 +94,11 @@ AI 每章循环 (v2.0):
 | 章节文件名必须零填充 | `chapters/` 目录下必须是 `ch001.md` 格式（三位零填充），不是 `ch1.md`。ch80+ 时极易写成 `ch80.md`，导致 `--count-words chapters/ch80.md` 找不到文件回退到 words=0 | `write_file` 的 path 务必用 `ch{NNN}.md` 格式：`chapters/ch080.md`。写完后 `ls chapters/ | grep -v 'ch[0-9][0-9][0-9]'` 确认无短名。已创建短名时 `mv ch80.md ch080.md` 修正 |
 | 批量 commit_chapter 文件名陷阱 | shell `for` 循环批量提交 ch80+ 时，`head -1` 等读取的路径也必须零填充——`ch80.md` 不存在会静默跳过，commit 成功但 words=0 | 批量提交前先 `ls chapters/ | tail -10` 确认文件名。正确路径：`/root/novels/delivery-knight/chapters/ch080.md` |
 | volume_transition 后必须手动创建卷大纲+全量重写状态文件 | `volume_transition.py` 只做机械重置（arc-tracker/current_volume 等），不会创建新卷大纲、不会更新 characters/threads/emotional-debts。跳过这些步骤直接写章会导致状态与正文脱节 | 卷间过渡后必须：① `write_file outlines/volumeN-outline.md` 创建卷大纲 ② `write_file state/characters.yaml` 全量重写（新角色+状态更新） ③ `write_file state/threads.yaml` 封卷旧线索+播种新线索 ④ `write_file state/emotional-debts.yaml` 全量重写 ⑤ `consistency_checker.py check` 确认数据有意义 |
+| Git push 失败不阻塞写作 | `git push` 可能因网络问题临时失败，不应中断写作循环 | push 失败时继续写下一章，下次 commit 时重试 push。可以一次 push 包含多个 commit |
+| 跨会话必须先 git pull | 其他会话可能已推送新章节。不 pull 直接写会产生 push 冲突 | Step 0 会话恢复的第一步就是 `git pull origin main`，然后再读 novel-project.yaml |
+| 不要在写章中途 commit | 章正文 + 状态更新应是一个原子提交。中途 commit 会导致一个"半成品"被推到远程 | commit 时机：commit_chapter.py 之后、下一章开始之前 |
+| commit 消息要一致 | 随意的 commit 消息让 git log 不可读 | 格式：`ch{NNN}: 标题`（普通章）、`ch{NNN}: 标题 [卷N完结]`（卷末）、`ch{NNN}: 标题 [全书完结]`（终章）、`state: 同步说明`（纯状态更新） |
+| gh repo create 要 --source=. | 单独 `gh repo create` 只创建远程空仓库，不会自动连接本地 | 用 `gh repo create andy-develop/书名 --private --source=. --push` 一条命令完成：创建远程 + 关联本地 + 首次推送 |
 
 ---
 

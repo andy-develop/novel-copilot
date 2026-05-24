@@ -163,7 +163,16 @@ Score_ch1-2 = 0.10*rhythm_fit + 0.35*drive_intensity + 0.05*thread_advancement
 3. 输出校验摘要到 state/consistency-log.yaml
 ```
 
-**第七步：终止检查**
+**第七步：Git 同步（每章必做）**
+```
+1. git add -A
+2. git commit -m "ch{NNN}: {章节标题}"
+3. git push origin main
+```
+> 每个小说项目是一个 GitHub 仓库。每章写完 + 状态更新 + 一致性校验后，自动 commit & push。
+> commit 消息格式：`ch{NNN}: {标题}`（普通章）| `ch{NNN}: {标题} [卷完结]`（卷末章）| `ch{NNN}: {标题} [全书完结]`（最终章）
+
+**第八步：终止检查**
 ```
 满足以下任一条件则终止循环：
 - current_words >= target_words
