@@ -6,12 +6,29 @@
 
 ## 7.7 自动写作实操须知
 
-**核心事实：AI 是整个循环的编排者，脚本只是决策辅助。**
+core fact: AI is the loop orchestrator, scripts are just decision aids.
 
-自动写作循环不是 `auto_write.py` 驱动的——脚本是**查询工具**，AI agent 才是循环引擎。实际流程是：
+### v2.1 有机冲刺循环（commit_chapter 驱动）
+
+> v2.1 引入 `commit_chapter.py` 后，每章的 4-6 次 patch 操作压缩为一条命令。实测：10章写作，零手动 patch。
 
 ```
-AI 每章循环:
+AI 每章循环 (v2.1 organic sprint):
+1. AI 心算当前弧线阶段 → 选择发散模式（零CLI）
+2. write_file: 写章节正文 ch{NNN}.md
+3. terminal: commit_chapter.py --dir DIR --chapter N --title "标题" \
+     --count-words chapters/chNNN.md --pattern "D5+D9" --hook 焦虑型 --tension 8 \
+     --thread-advance "T015:developed,T018:resolved:42"
+   ↑ 一条命令更新: novel-project.yaml + arc-tracker.yaml + threads.yaml + consistency-log.yaml
+4. 每N章: consistency_checker.py check DIR（N=3默认）
+5. 每5章: patch characters.yaml + emotional-debts.yaml（强制回写）
+6. 继续下一章
+```
+
+### v2.0 循环（旧版，commit_chapter 引入前）
+
+```
+AI 每章循环 (v2.0):
 1. terminal: rhythm → 获取当前节奏推荐
 2. AI 发散 → 生成候选方向 + 心算评分
 3. terminal: score → 评分验证（AI 把心算分数编码为 CLI 参数）
@@ -37,7 +54,7 @@ AI 每章循环:
 | 跨会话状态漂移 | 上一个会话写了10章但没做最终状态回写，下一个会话恢复时状态文件还停在第1章 | **每个会话结束前必须强制做一次完整状态同步**（角色/线索/情感债/时间线/弧线追踪）。新会话开始时也要先验证状态文件与实际章节数一致再开始写作 |
 | YAML patching developments字段 | threads.yaml中多个条目有相同的`developments: []`，patch时old_string不够唯一会报"Found N matches" | 必须包含足够的上下文（如相邻的`importance`、`urgency`、`expected_resolve_by`字段）使old_string唯一。或改用完整条目重写策略 |
 | YAML缩进断裂 | patch在`planted_context`后直接插入列表项但漏了`developments:`键，导致YAML解析失败 | patch后立即用consistency_checker验证；如果YAML解析失败，先read_file定位错误行号再修复。列表项必须出现在其父键之下 |
-| 中文小说字数统计 | write_file写入中文字符后byte数远大于字数，current_words无法通过文件大小验证 | current_words用中文字符数（约等于章节数×avg_words_per_chapter），不要求精确。中文字符≈3字节UTF-8 |
+| 中文小说字数统计 | write_file写入中文字符后byte数远大于字数，current_words无法通过文件大小验证 | v2.1方案：`commit_chapter.py --count-words chapters/chNNN.md` 自动统计CJK字符数；或 `auto_write.py wordcount --dir DIR --update` 批量校准全卷字数 |
 | 跨会话状态全面漂移 | 会话重置后，characters/threads/arc-tracker 可能落后 current_chapter 多章（如10章写完但状态停在1章）| 进入写作循环前必须执行 Step 0 会话恢复；落后>3章时用 write_file 全量重写状态文件比逐条 patch 更高效 |
 | YAML patch 碰撞 | threads.yaml 中 `developments: []` 等通用字段在多条线索中重复出现，patch 仅凭 `old_string` 无法唯一定位 | patch 时附带前后2-3行的上下文（如 id 行或 description 开头），确保 old_string 在文件中唯一 |
 | resolved 字段残留 | 用 patch 替换 developments 内容后，旧线索底部的 `resolved_chapter: null` / `resolved_how: null` 可能未被替换，导致同一线索同时有新旧两套 resolved 字段 | 替换 resolved 值时把整个 `resolved_chapter` + `resolved_how` 块一起替换，或在 patch 后 read_file 目视检查重复字段 |
@@ -49,14 +66,29 @@ AI 每章循环:
 | 方向融合比单选更有效 | 实操中最高分和次高分差距常 <0.15，单选不如融合 | 取最高分方向的主模式 + 次高分方向1个互补模式，标注 "D主+D副"。融合方向在二次爬升和真高潮阶段尤其有效——复杂叙事需要多驱动 |
 | 软告警"逾期待收束"可能是误报 | consistency_checker 报线索"超过预期收束章节"，但某些"线索"只是场景/设定（如荒地、外墙），不需要主动收束 | 在 threads.yaml 中，区分「事件型线索」（需要 planted→developed→resolved 完整弧线）和「设定型线索」（仅作世界观补充，resolved_chapter 可设为 null）。设定型线索的 urgency 应设 low 或备注 `type: setting` |
 | 线索描述要及时更新 | threads.yaml 的 description 字段仍停留在最初种下时的措辞，但线索已发生重大转折，导致 context compaction 后 AI 根据 description 误判线索当前状态 | **每5章或线索发生重大转折时，更新 description 字段反映当前状态**（如"T015: 7.83Hz SOS"→"T015: 晨觉醒降级完成+1.7Hz=维度心跳"）。developments 太长时也需精简——只保留最近3-4个关键转折，删除早期琐碎条目 |
+| 冲刺模式字数缩水 | 连续冲刺5+章时，每章字数从3500字逐渐缩到1500字——AI在高速输出中跳过环境描写和心理活动 | 每3章暂停一次，检查字数是否<2000，如果是则在下一章加一个"回归细节"的方向提示（如D6双线映照/D13情感回收），或者手动在标题后注明"本章3000字+" |
+| 卷间大纲≠实际走向 | 卷大纲规划的弧线阶段（起势/升压/假高潮/二次爬升/真高潮/落幕）在实写中经常被自发突破——最常见的是"假高潮"阶段的角色行为比大纲更强，自动推入"真高潮" | 每5章对照大纲检查弧线阶段是否自然偏移。偏移不是错误——是角色在"自己选路"。如果偏移了，更新大纲和arc-tracker而不是强拉回调 |
+| consistency_checker 全绿≠故事好 | 零冲突只是底线，不等于节奏/爽感/情感到位。两部小说共160章零冲突，但部分章节张力偏低或爽感不足 | consistency_checker 检查逻辑一致性，节奏质量靠 arc-tracker 的 recent_tension 曲线人工审查——连续3章≤3就是红灯 |
 | 卷间 characters.yaml 必须全量重写 | 卷间过渡时角色位置/状态/能力/关系全面变化，用 patch 逐条更新极易遗漏或产生缩进错误 | 卷间过渡时用 `write_file` 全量重写 characters.yaml，不要 patch。这是卷间过渡协议中"演化角色状态"步骤的正确执行方式 |
 | 卷内5章强制同步characters+debts | 有机冲刺中逐章 patch threads/arc-tracker 但 characters 和 emotional-debts 容易被遗忘——它们的变化较慢但积累后偏差很大 | 每5章强制 patch 更新 characters.yaml 的 condition_note/abilities/power_level 和 emotional-debts.yaml 的 status/paid_amount。在 consistency_check（每3章）之后顺带做5章同步最省力 |
 | 频率/设定体系需要专门追踪 | 长篇中常出现体系化的设定（如频率谱、能力等级、组织架构），散落在各章正文中，跨会话恢复时极难完整回忆 | 在 world.yaml 或专门的 references 文件中维护设定体系速查表。格式：频率→含义→首次出现章→持有者。每卷完结时更新一次 |
-| 连续冲刺模式下节奏控制 | 用户说"继续"后连续写5+章，逐章跑 consistency_check 太慢 | **冲刺模式**：① rhythm+score 合并在一条 terminal 命令中 ② 写完章节后将 3-4 个独立文件的 patch 放在同一个 function_calls 块并发执行 ③ consistency_check 间隔可放宽到每 3-5 章一次（非每章）④ 每卷完结时输出进度汇总表 |
+| 连续冲刺模式下节奏控制 | 用户说"继续"后连续写5+章，逐章跑 consistency_check 太慢 | **v2.1冲刺模式**：① commit_chapter.py 一条命令替代4-6次patch ② consistency_check 间隔每3-5章一次 ③ 每5章强制回写 characters+debts ④ 每卷完结时输出进度汇总表 + `auto_write.py wordcount --update` 校准字数 |
 | 有机冲刺模式（大纲驱动） | 卷大纲足够详细时，逐章跑 rhythm+score CLI 是不必要的开销 | 当 volume outline 含6大种子+弧线阶段表时，AI 可跳过 CLI 直接有机选择方向。详见 §7.10 和 `references/volume-outline-guide.md` |
 | 上下文压缩后恢复 | 会话过长触发的 context compaction 会把早期对话压缩为摘要，但摘要包含完整的状态信息（进度/阶段/线索/角色）| 依赖 compaction 摘要中的"Active State"和"Key Decisions"恢复上下文，然后验证 state/*.yaml 文件与摘要一致。如果 compaction 摘要是唯一来源且与 yaml 文件有冲突，以 yaml 文件为准——它们是 ground truth |
 | 跨会话状态漂移 | 新会话中"继续"写作时，状态文件可能比 novel-project 中的 current_chapter 落后5+章——arc-tracker 停在旧阶段、characters 的 last_appeared 全是 0、threads 的 developments 为空 | **必须先执行 Step 0 会话恢复**：通读未同步的章节→提取事件→批量更新 yaml→确认 rhythm 正常，再进入写作循环。跳过此步会导致节奏分析和方向评分基于错误状态 |
-| 方向融合实操 | score 命令输出建议"合并 TOP2"时，AI 需要手动构思融合方向——脚本不生成融合方案 | 融合策略：取 TOP1 的核心驱动 + TOP2 的情感/线索维度，构成一个复合模式标签（如 D11+D5+D9），在 arc-tracker 的 recent_patterns 中记录完整复合标签 |
+| 方向融合实操 | score 命令输出建议"合并 TOP2"时，AI 需要手动构思融合方案——脚本不生成融合方案 | 融合策略：取 TOP1 的核心驱动 + TOP2 的情感/线索维度，构成一个复合模式标签（如 D11+D5+D9），在 arc-tracker 的 recent_patterns 中记录完整复合标签 |
+| YAML flow sequence 引号嵌套 | characters.yaml 的 inventory 写 `[普通电动车, "方柱必达"头巾]` 时，中文引号在 YAML flow sequence 中被解析为字符串终止符，报 `expected ',' or ']'` | 避免在 `[...]` flow sequence 中使用含引号的字符串，改写为不含引号的版本（如 `方柱必达头巾`），或用块序列格式（`- 方柱必达头巾`） |
+| consistency_checker 无 --deep 选项 | `consistency_checker.py check --deep` 会报 `unrecognized arguments: --deep`。check 子命令自动根据章节号决定深度（3的倍数章轻检，10的倍数章深审） | 正确用法只有两种：`check <项目目录>`（间隔性校验，自动决定轻/深）和 `audit <项目目录>`（全局审查，列出全部🟢建议含关系对称等）。不要添加 `--deep` 参数 |
+| arc-tracker 阶段转换需手动更新 | `commit_chapter.py` 只更新 `phase_chapters_elapsed`，不会自动切换 `current_phase`。跨越弧线阶段（如升压→假高潮→二次爬升）时，phase 仍停在旧阶段 | 弧线阶段切换时必须手动 `patch arc-tracker.yaml` 更新 `current_phase`、`phase_start_chapter`、`phase_chapters_elapsed` 三项。commit_chapter 无法感知阶段边界 |
+| thread-advance resolved 语法 | commit_chapter 可以在线索收束时直接标记 resolved，格式：`--thread-advance "T005:resolved:17"` | `developed` 推进线索：`T003:developed`；`resolved:章节号` 收束线索：`T005:resolved:17`。一条命令可批量推进+收束，如 `"T003:developed,T005:resolved:17"` |
+| 卷完结验证流程 | 全卷写完后需要完整的收束验证，不能只跑 consistency_check | 全卷完结标准流程：① `consistency_checker.py audit <项目目录>` 深审 ② `auto_write.py wordcount --dir <目录> --update` 精确字数 ③ 检查 threads.yaml 全部线索是否已 resolved（major 线索未收束=烂尾）④ 更新 arc-tracker current_phase 为最终阶段 ⑤ 输出完本统计表 |
+| novel-project.yaml 嵌套结构 | 代码访问 `novel-project.yaml` 时，关键字段在 `meta:` 键下，不是顶层。如 `meta.current_chapter` 而非 `current_chapter` | Python 读取时用 `d['meta']['current_chapter']`，不要用 `d['current_chapter']`。commit_chapter.py 已处理此结构，但手动脚本需注意 |
+| consistency_checker characters 格式 | `characters.yaml` 以 `characters:` 顶层键包裹，值可能是 dict（key=角色ID）或 list。脚本用 `.get("characters", [])` 取出后当 list 遍历，dict 时遍历的是 key 字符串，导致 `str.get()` 崩溃 | **已修复(v2.1.2)**：取值后判断 isinstance，dict 则 `.values()` 转 list。手动修改 characters.yaml 时务必保持 dict 格式（`characters: {qin_yi: {name: 秦逸, ...}}`），脚本已兼容两种格式 |
+| consistency_checker relationships 格式 | characters.yaml 中 `relationships` 字段可能是 dict（`{yin_dian: 共生}`）或 list-of-dict（`[{target: yin_dian, type: 共生}]`）。audit 的 `_audit_relationship_symmetry` 只处理 list-of-dict，dict 格式时 `rel.get("target")` 对 str 调用报 AttributeError | **已修复(v2.1.2)**：`_audit_relationship_symmetry` 现在分支处理 list 和 dict 两种格式。dict 格式的关系描述直接用作 message 文本 |
+| volume_transition.py CLI 参数 | `--from-volume` / `--to-volume` 不存在，正确参数是 `--volume N`（目标卷号）+ `--title "卷名"` + `--first-chapter N` | 正确用法：`volume_transition.py --dir DIR --volume 2 --title "雷" --first-chapter 31`。`--dry-run` 预览但不写入 |
+| 章节文件名必须零填充 | `chapters/` 目录下必须是 `ch001.md` 格式（三位零填充），不是 `ch1.md`。ch80+ 时极易写成 `ch80.md`，导致 `--count-words chapters/ch80.md` 找不到文件回退到 words=0 | `write_file` 的 path 务必用 `ch{NNN}.md` 格式：`chapters/ch080.md`。写完后 `ls chapters/ | grep -v 'ch[0-9][0-9][0-9]'` 确认无短名。已创建短名时 `mv ch80.md ch080.md` 修正 |
+| 批量 commit_chapter 文件名陷阱 | shell `for` 循环批量提交 ch80+ 时，`head -1` 等读取的路径也必须零填充——`ch80.md` 不存在会静默跳过，commit 成功但 words=0 | 批量提交前先 `ls chapters/ | tail -10` 确认文件名。正确路径：`/root/novels/delivery-knight/chapters/ch080.md` |
+| volume_transition 后必须手动创建卷大纲+全量重写状态文件 | `volume_transition.py` 只做机械重置（arc-tracker/current_volume 等），不会创建新卷大纲、不会更新 characters/threads/emotional-debts。跳过这些步骤直接写章会导致状态与正文脱节 | 卷间过渡后必须：① `write_file outlines/volumeN-outline.md` 创建卷大纲 ② `write_file state/characters.yaml` 全量重写（新角色+状态更新） ③ `write_file state/threads.yaml` 封卷旧线索+播种新线索 ④ `write_file state/emotional-debts.yaml` 全量重写 ⑤ `consistency_checker.py check` 确认数据有意义 |
 
 ---
 

@@ -18,7 +18,8 @@ class ConsistencyChecker:
     def __init__(self, project_dir):
         self.project_dir = Path(project_dir)
         self.state_dir = self.project_dir / "state"
-        self.characters = load_yaml(self.state_dir / "characters.yaml").get("characters", [])
+        _chars_raw = load_yaml(self.state_dir / "characters.yaml").get("characters", {})
+        self.characters = list(_chars_raw.values()) if isinstance(_chars_raw, dict) else _chars_raw
         self.world = load_yaml(self.state_dir / "world.yaml")
         self.threads = load_yaml(self.state_dir / "threads.yaml").get("threads", [])
         self.timeline = load_yaml(self.state_dir / "timeline.yaml")
@@ -157,17 +158,34 @@ class ConsistencyChecker:
 
     def _audit_relationship_symmetry(self):
         for c in self.characters:
-            for rel in c.get("relationships", []):
-                tid = rel.get("target", "")
-                target = next((x for x in self.characters if x.get("id") == tid), None)
-                if not target:
-                    self.warnings.append({"rule": "W_关系悬空",
-                        "message": f"🟡 '{c['name']}' 与 '{tid}' 有关系但角色不在库", "severity": "soft"})
-                    continue
-                rev = next((r for r in target.get("relationships", []) if r.get("target") == c.get("id")), None)
-                if not rev:
-                    self.suggestions.append({"rule": "S_关系对称", "entity": f"{c.get('id', c['name'])}→{tid}",
-                        "message": f"🟢 '{c['name']}' →'{rel['type']}'→ '{target['name']}'，反向未设定"})
+            rels = c.get("relationships", {})
+            if isinstance(rels, list):
+                # list of dict format
+                for rel in rels:
+                    tid = rel.get("target", "")
+                    target = next((x for x in self.characters if x.get("id") == tid), None)
+                    if not target:
+                        self.warnings.append({"rule": "W_关系悬空",
+                            "message": f"🟡 '{c['name']}' 与 '{tid}' 有关系但角色不在库", "severity": "soft"})
+                        continue
+                    rev = next((r for r in target.get("relationships", []) if r.get("target") == c.get("id")), None)
+                    if not rev:
+                        self.suggestions.append({"rule": "S_关系对称", "entity": f"{c.get('id', c['name'])}→{tid}",
+                            "message": f"🟢 '{c['name']}' →'{rel['type']}'→ '{target['name']}'，反向未设定"})
+            elif isinstance(rels, dict):
+                # dict format: key=target_id, value=description
+                for tid, desc in rels.items():
+                    target = next((x for x in self.characters if x.get("id") == tid or x.get("name") == tid), None)
+                    if not target:
+                        continue
+                    target_rels = target.get("relationships", {})
+                    if isinstance(target_rels, dict):
+                        rev = target_rels.get(c.get("id") or c.get("name"), None)
+                    else:
+                        rev = None
+                    if not rev:
+                        self.suggestions.append({"rule": "S_关系对称", "entity": f"{c.get('id', c['name'])}→{tid}",
+                            "message": f"🟢 '{c['name']}' →'{desc}'→ '{target['name']}'，反向未设定"})
 
     def _audit_pacing(self):
         chapters = self.timeline.get("chapters", [])
@@ -202,21 +220,40 @@ class ConsistencyChecker:
         save_yaml(str(self.log_path), log)
         return seen
 
-    def apply_suppression(self, seen, threshold=3):
-        """标记重复≥threshold次的🟢建议为 _suppressed，返回 summary"""
+    def apply_suppression(self, seen, threshold=3, rule_fold=5):
+        """标记重复≥threshold次的🟢建议为 _suppressed; 同规则>rule_fold条时折叠为汇总"""
+        # Phase 1: 原有 entity-level suppression
         for s in self.suggestions:
             entry = seen.get(s["rule"], {}).get(s.get("entity", ""), {})
             if entry.get("count", 0) >= threshold:
                 s["_suppressed"] = True
+        # Phase 2: Rule-level folding — if same rule has >rule_fold suggestions, suppress all but a summary line
         rule_counts = {}
         for s in self.suggestions:
-            if s.get("_suppressed"):
+            if not s.get("_suppressed"):
                 rule_counts[s["rule"]] = rule_counts.get(s["rule"], 0) + 1
-        total = sum(rule_counts.values())
-        parts = [f"{r}×{c}" for r, c in rule_counts.items()]
+        folded_rules = {r for r, c in rule_counts.items() if c > rule_fold}
+        if folded_rules:
+            # Mark all of that rule as suppressed, add one summary
+            for s in self.suggestions:
+                if s["rule"] in folded_rules and not s.get("_suppressed"):
+                    s["_suppressed"] = True
+            for rule in folded_rules:
+                cnt = rule_counts[rule]
+                self.suggestions.append({
+                    "rule": rule, "entity": "_folded",
+                    "message": f"🟢 [{rule}] 同类建议{cnt}条，已折叠（--verbose 查看全部）",
+                    "_folded": True
+                })
+        # Build summary
+        rule_sup = {}
+        for s in self.suggestions:
+            if s.get("_suppressed") and not s.get("_folded"):
+                rule_sup[s["rule"]] = rule_sup.get(s["rule"], 0) + 1
+        total = sum(rule_sup.values())
+        parts = [f"{r}×{c}" for r, c in rule_sup.items()]
         summary = f"🟢 {total} suggestions suppressed (seen {threshold}+ times): {', '.join(parts)}" if total else ""
-        visible = [s for s in self.suggestions if not s.get("_suppressed")]
-        return visible, total, summary
+        return [], total, summary
 
 
 def print_report(result, verbose=False):
@@ -233,7 +270,7 @@ def print_report(result, verbose=False):
         print(f"\n🟡 软警告 ({len(warnings)} 项)\n" + "-" * 40)
         for w in warnings: print(f"  [{w['rule']}] {w['message']}")
 
-    shown = all_suggestions if verbose else [s for s in all_suggestions if not s.get("_suppressed")]
+    shown = all_suggestions if verbose else [s for s in all_suggestions if not s.get("_suppressed") or s.get("_folded")]
     if shown:
         extra = ", 含已抑制" if verbose and summary else ""
         print(f"\n🟢 提示建议 ({len(shown)} 项{extra})\n" + "-" * 40)

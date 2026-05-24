@@ -60,6 +60,13 @@ def commit_chapter(args):
     hook = args.hook
     tension = args.tension
 
+    # Auto-discover chapter file when --count-words not provided
+    if not args.count_words:
+        auto_path = project_dir / "chapters" / f"ch{chapter:03d}.md"
+        if auto_path.exists():
+            args.count_words = str(auto_path)
+            print(f"📖 自动发现章节文件: {auto_path}")
+
     # --count-words overrides --words
     if args.count_words:
         filepath = args.count_words
