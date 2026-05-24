@@ -8,21 +8,24 @@
 
 core fact: AI is the loop orchestrator, scripts are just decision aids.
 
-### v2.1 有机冲刺循环（commit_chapter 驱动）
+### v2.2 有机冲刺循环（commit_chapter 驱动）
 
-> v2.1 引入 `commit_chapter.py` 后，每章的 4-6 次 patch 操作压缩为一条命令。实测：10章写作，零手动 patch。
+> v2.2 改进：`commit_chapter.py` 省略 `--count-words` 时自动拼接路径；`auto_sync.py` 一键检测同步差距；同规则🟢建议>5条自动折叠。实测：90章连续写作，零手动 patch。
+
+> ⚠️ **核心原则：用户说"继续"=不间断冲刺。不要暂停问问题、不要输出中间统计、不要确认下一步。写就完了。**
 
 ```
-AI 每章循环 (v2.1 organic sprint):
+AI 每章循环 (v2.2 organic sprint):
 1. AI 心算当前弧线阶段 → 选择发散模式（零CLI）
-2. write_file: 写章节正文 ch{NNN}.md
+2. write_file: 写章节正文 ch{NNN}.md（路径必须三位零填充！ch080.md ✅ ch80.md ❌）
 3. terminal: commit_chapter.py --dir DIR --chapter N --title "标题" \
-     --count-words chapters/chNNN.md --pattern "D5+D9" --hook 焦虑型 --tension 8 \
+     --pattern "D5+D9" --hook 焦虑型 --tension 8 \
      --thread-advance "T015:developed,T018:resolved:42"
+   ↑ --count-words 已省略，v2.2 自动发现 chapters/chNNN.md
    ↑ 一条命令更新: novel-project.yaml + arc-tracker.yaml + threads.yaml + consistency-log.yaml
-4. 每N章: consistency_checker.py check DIR（N=3默认）
+4. 每N章: consistency_checker.py check DIR（N=3-5默认，同规则>5条🟢自动折叠）
 5. 每5章: patch characters.yaml + emotional-debts.yaml（强制回写）
-6. 继续下一章
+6. 继续下一章（不停顿、不问用户）
 ```
 
 ### v2.0 循环（旧版，commit_chapter 引入前）
@@ -98,7 +101,17 @@ AI 每章循环 (v2.0):
 
 **会话恢复（每次新会话续写时必须执行）**：
 
-详见 `references/auto-writing-execution-protocol.md` 的 Step 0。核心流程：读 novel-project.yaml → 检查所有 state 文件是否落后 current_chapter → 如落后则通读未同步章节 → 批量更新 → rhythm 确认同步正常。**绝不跳过此步直接写作。**
+详见 `references/auto-writing-execution-protocol.md` 的 Step 0。核心流程：读 novel-project.yaml → `auto_sync.py --dir <项目>` 一键检测同步差距 → 如落后则通读未同步章节 → 批量更新 → consistency_checker 确认正常。**绝不跳过此步直接写作。**
+
+auto_sync.py 输出示例：
+```
+📊 当前章节: 90
+⚠️  发现 3 个同步问题:
+  1. 📋 characters.yaml: 13角色落后>5章或未更新
+  2. 🧵 threads.yaml: 3线索落后>5章
+  3. ⏱️ timeline.yaml: 落后88章
+💡 建议: 通读落后章节 → 批量更新状态文件 → consistency_checker 验证
+```
 
 **过期检测信号**：
 - characters.yaml 中 `last_appeared` 全是 0 或差距 > 5章
