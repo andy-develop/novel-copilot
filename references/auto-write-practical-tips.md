@@ -99,6 +99,15 @@ AI 每章循环 (v2.0):
 | 不要在写章中途 commit | 章正文 + 状态更新应是一个原子提交。中途 commit 会导致一个"半成品"被推到远程 | commit 时机：commit_chapter.py 之后、下一章开始之前 |
 | commit 消息要一致 | 随意的 commit 消息让 git log 不可读 | 格式：`ch{NNN}: 标题`（普通章）、`ch{NNN}: 标题 [卷N完结]`（卷末）、`ch{NNN}: 标题 [全书完结]`（终章）、`state: 同步说明`（纯状态更新） |
 | gh repo create 要 --source=. | 单独 `gh repo create` 只创建远程空仓库，不会自动连接本地 | 用 `gh repo create andy-develop/书名 --private --source=. --push` 一条命令完成：创建远程 + 关联本地 + 首次推送 |
+| gh repo create 需要先有初始 commit | `gh repo create --source=. --push` 在空仓库（无 commit）时失败——"no commits found" | 先 `git add -A && git commit -m "init"` 创建首次提交，再执行 `gh repo create`。如果 git 默认分支是 master 而非 main，需先 `git branch -m main` |
+| Git push 需要认证 URL | `git push origin main` 在无凭据时失败——"could not read Username" | 设置 remote URL 含 PAT：`git remote set-url origin https://USER:TOKEN@github.com/USER/REPO.git`。首次 push 后凭据被缓存，后续无需重复 |
+| Git 首次提交需要 user identity | 新环境中 `git commit` 失败——"Author identity unknown" | 先 `git config --global user.email "xxx@xxx.com" && git config --global user.name "name"`，再 commit |
+| 批量 commit_chapter 节省轮次 | 逐章调用 commit_chapter.py + git push 每章消耗大量 execute_code 轮次 | 数章写完后用 execute_code 循环批量 commit，最后一次 `git add -A && git commit && git push`。例如 3-5 章写完后再统一提交，减少 50%+ 的工具调用轮次 |
+| consistency_checker 软告警"修为检查"反复出现 | W3_修为检查 对角色初始修为变更持续报🟡，即使变更合理也无法消除 | 此告警为已知限制——checker 不追踪角色修为的增量变更（如从1%→50%的多次提升），仅比对初始记录与规则。可忽略，或在 characters.yaml 的 power_changes 数组中记录完整变更历史后告警自动消失 |
+| auto_write.py wordcount 显示 TypeError | `wordcount` 命令在计算进度条时 `bar_len` 为 float 导致 `TypeError: can't multiply sequence by non-int of type 'float'` | 已知 bug（进度条百分比计算未取整）。字数统计本身正确，只是显示崩溃。可忽略或手动 `int()` 修补脚本 |
+| 有机冲刺模式的实际效率 | 跳过 rhythm/score CLI 直接由 AI 根据大纲选择方向，每章节省 1-2 轮工具调用 | 前提：volume outline 必须包含 6 大种子 + 弧线阶段规划表 + 每阶段推荐发散模式。没有详细大纲时有机模式等于瞎选——必须回退 CLI 模式 |
+| 冲刺模式每章字数波动大 | 连续冲刺 10+ 章时，字数从 3000+ 缩到 1500 或膨胀到 4500 | 大纲越详细字数越稳定——每章大纲若标明"本章 3000 字+关键场景"，AI 更容易控制篇幅。无大纲的纯有机模式下字数波动是正常的，每 3-5 章用 wordcount 校准一次 |
+| 卷一完结后 threads.yaml 需全量重写 | 卷一完结时大量线索已 resolved，但旧条目的 developments 数组过长（10+ 条），拖慢后续读取 | 卷完结时用 `write_file` 全量重写 threads.yaml：resolved 线索精简为 id+description+resolved_chapter+status: resolved；延续到卷二的线索保持完整；新增卷二线索 |
 
 ---
 
