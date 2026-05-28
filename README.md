@@ -144,42 +144,6 @@ python3 scripts/auto_write.py init --name "我的小说名" --mode auto
 
 ---
 
-### 不同 Agent 平台的具体用法
-
-#### Hermes Agent
-
-```bash
-hermes skills install https://github.com/andy-develop/novel-copilot --force
-# 对话中说「写小说」自动触发
-```
-
-#### Claude Code
-
-```bash
-# 把 SKILL.md 内容追加到 CLAUDE.md
-cat SKILL.md >> CLAUDE.md
-# 或直接告诉 Claude：「按 SKILL.md 的流程，全自动写《书名》」
-```
-
-#### Codex CLI
-
-```bash
-codex exec "按 SKILL.md 的自动写作流程，初始化并全自动写完《书名》，开头：[你的开头]"
-```
-
-#### OpenCode / OpenClaw
-
-```bash
-# 将仓库放入项目目录，agent 自动发现 SKILL.md
-cp -r novel-copilot/* my-novel-project/
-```
-
-#### 任意支持 terminal 的 AI
-
-直接把 `SKILL.md` 内容粘贴给 AI，然后说：「按上述流程，全自动写《书名》，开头如下：[开头]」
-
----
-
 ## 🛠️ CLI 工具
 
 所有工具都是独立 Python 脚本，任何 agent 直接调用即可：
