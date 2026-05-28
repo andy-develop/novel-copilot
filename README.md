@@ -106,15 +106,19 @@
 
 ## 📦 安装
 
-```bash
-# 克隆仓库
-git clone https://github.com/andy-develop/novel-copilot.git
-cd novel-copilot
+打开你正在用的 agent（Claude Code、Codex、Cursor、OpenClaw、Hermes、CodeBuddy、Gemini CLI、OpenCode 等），告诉它：
+
+```
+帮我安装这个 skill：https://github.com/andy-develop/novel-copilot
 ```
 
-**依赖**：Python 3.10+，无第三方包依赖。CLI 工具全部使用标准库。
+或者用通用 CLI 安装器（[vercel-labs/skills](https://github.com/vercel-labs/skills)，支持 55+ runtime）：
 
-**可选**：安装 `gh`（GitHub CLI）用于自动创建仓库和 Git 同步。
+```bash
+npx skills add andy-develop/novel-copilot
+```
+
+**依赖**：Python 3.10+（CLI 工具全部使用标准库，无第三方包依赖）。可选安装 `gh` 用于 Git 同步。
 
 ---
 
