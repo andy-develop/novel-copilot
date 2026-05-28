@@ -5,7 +5,7 @@ version: 3.0.0
 author: Hermes Agent
 tags: [小说, 写作, 长篇, 逻辑一致性, 剧情发散, 角色管理, 世界观, 悬念, 翻页驱动, 叙事纪律, 读者情绪, 爽度, 画面感, 快节奏]
 trigger: 当用户要写小说、续写章节、检查设定矛盾、探索剧情分支时触发
-related_skills: [english-novel-copilot]
+related_skills: []
 ---
 
 # 长篇小说写作助手 (Novel Copilot)
