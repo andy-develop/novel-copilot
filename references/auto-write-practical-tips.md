@@ -74,7 +74,10 @@ AI 每章循环 (v2.0):
 | 冲刺模式字数缩水 | 连续冲刺5+章时，每章字数从3500字逐渐缩到1500字——AI在高速输出中跳过环境描写和心理活动 | 每3章暂停一次，检查字数是否<2000，如果是则在下一章加一个"回归细节"的方向提示（如D6双线映照/D13情感回收），或者手动在标题后注明"本章3000字+" |
 | 卷间大纲≠实际走向 | 卷大纲规划的弧线阶段（起势/升压/假高潮/二次爬升/真高潮/落幕）在实写中经常被自发突破——最常见的是"假高潮"阶段的角色行为比大纲更强，自动推入"真高潮" | 每5章对照大纲检查弧线阶段是否自然偏移。偏移不是错误——是角色在"自己选路"。如果偏移了，更新大纲和arc-tracker而不是强拉回调 |
 | consistency_checker 全绿≠故事好 | 零冲突只是底线，不等于节奏/爽感/情感到位。两部小说共160章零冲突，但部分章节张力偏低或爽感不足 | consistency_checker 检查逻辑一致性，节奏质量靠 arc-tracker 的 recent_tension 曲线人工审查——连续3章≤3就是红灯 |
-| 卷间 characters.yaml 必须全量重写 | 卷间过渡时角色位置/状态/能力/关系全面变化，用 patch 逐条更新极易遗漏或产生缩进错误 | 卷间过渡时用 `write_file` 全量重写 characters.yaml，不要 patch。这是卷间过渡协议中"演化角色状态"步骤的正确执行方式 |
+| 卷间 characters.yaml 必须全量重写 | 卷间过渡时角色位置/状态/能力/关系全面变化，用 patch 逐条更新极易遗漏或产生缩进错误 | 卷间过渡时用 `terminal heredoc`（`cat > characters.yaml`）全量重写，不要 patch。这是卷间过渡协议中"演化角色状态"步骤的正确执行方式 |
+| read_file 行号前缀污染（致命） | 在 execute_code 中用 `read_file()` 读取已有 YAML 内容再拼接新内容写入——read_file 返回 `"N|内容"` 格式，行号前缀被永久嵌入文件，YAML 语法彻底损坏。正则清理也不可靠（多行被压缩合并、缩进丢失） | **绝对禁止 read→拼接→write 回环**。全量重写用 terminal heredoc 或 execute_code 内直接 write_file 全量覆盖，不读取旧内容 |
+| YAML 状态文件推荐写入方式 | characters/threads/emotional-debts 等复杂 YAML 的全量重写容易出错——Python 字符串引号嵌套、execute_code 内容过长超时 | 用 `terminal` heredoc 方式：`cat > path.yaml << 'EOF'\n内容\nEOF`。多角色分2-3次 `cat >>` 追加。每次写完后 `python3 -c "import yaml; yaml.safe_load(open('path'))"` 验证。heredoc 的单引号 EOF 防止 shell 变量展开 |
+| execute_code 章节正文长度上限 | 单次 execute_code 写超过 ~1200 汉字的章节正文时，工具调用参数可能超 8K tokens 导致流式超时（SyntaxError: unterminated string） | 单次 execute_code 的章节内容控制在 ~1200 字以内。需更长章节时分两次调用，第一次写前半，第二次写后半追加或覆盖 |
 | 卷内5章强制同步characters+debts | 有机冲刺中逐章 patch threads/arc-tracker 但 characters 和 emotional-debts 容易被遗忘——它们的变化较慢但积累后偏差很大 | 每5章强制 patch 更新 characters.yaml 的 condition_note/abilities/power_level 和 emotional-debts.yaml 的 status/paid_amount。在 consistency_check（每3章）之后顺带做5章同步最省力 |
 | 频率/设定体系需要专门追踪 | 长篇中常出现体系化的设定（如频率谱、能力等级、组织架构），散落在各章正文中，跨会话恢复时极难完整回忆 | 在 world.yaml 或专门的 references 文件中维护设定体系速查表。格式：频率→含义→首次出现章→持有者。每卷完结时更新一次 |
 | 连续冲刺模式下节奏控制 | 用户说"继续"后连续写5+章，逐章跑 consistency_check 太慢 | **v2.1冲刺模式**：① commit_chapter.py 一条命令替代4-6次patch ② consistency_check 间隔每3-5章一次 ③ 每5章强制回写 characters+debts ④ 每卷完结时输出进度汇总表 + `auto_write.py wordcount --update` 校准字数 |
@@ -103,6 +106,7 @@ AI 每章循环 (v2.0):
 | Git push 需要认证 URL | `git push origin main` 在无凭据时失败——"could not read Username" | 设置 remote URL 含 PAT：`git remote set-url origin https://USER:TOKEN@github.com/USER/REPO.git`。首次 push 后凭据被缓存，后续无需重复 |
 | Git 首次提交需要 user identity | 新环境中 `git commit` 失败——"Author identity unknown" | 先 `git config --global user.email "xxx@xxx.com" && git config --global user.name "name"`，再 commit |
 | 批量 commit_chapter 节省轮次 | 逐章调用 commit_chapter.py + git push 每章消耗大量 execute_code 轮次 | 数章写完后用 execute_code 循环批量 commit，最后一次 `git add -A && git commit && git push`。例如 3-5 章写完后再统一提交，减少 50%+ 的工具调用轮次 |
+| 章节正文写入流式超时 | 直接用 write_file 工具写入 >1000 字的章节内容会触发 stream timeout，delegate_task 写长文也有 brotli 兼容问题 | **正确做法**：`execute_code` 里 `from hermes_tools import write_file; write_file(path="chapters/chNNN.md", content=ch_text)`。execute_code 的 write_file 不走流式传输，不受大小限制。章节≥1500字时必须用此法，不要用顶层 write_file 工具 |
 | consistency_checker 软告警"修为检查"反复出现 | W3_修为检查 对角色初始修为变更持续报🟡，即使变更合理也无法消除 | 此告警为已知限制——checker 不追踪角色修为的增量变更（如从1%→50%的多次提升），仅比对初始记录与规则。可忽略，或在 characters.yaml 的 power_changes 数组中记录完整变更历史后告警自动消失 |
 | auto_write.py wordcount 显示 TypeError | `wordcount` 命令在计算进度条时 `bar_len` 为 float 导致 `TypeError: can't multiply sequence by non-int of type 'float'` | 已知 bug（进度条百分比计算未取整）。字数统计本身正确，只是显示崩溃。可忽略或手动 `int()` 修补脚本 |
 | 有机冲刺模式的实际效率 | 跳过 rhythm/score CLI 直接由 AI 根据大纲选择方向，每章节省 1-2 轮工具调用 | 前提：volume outline 必须包含 6 大种子 + 弧线阶段规划表 + 每阶段推荐发散模式。没有详细大纲时有机模式等于瞎选——必须回退 CLI 模式 |
