@@ -35,6 +35,40 @@ characters:
     inventory: []               # 当前持有物品
     inventory_history: []       # 物品变动 [{chapter, item, action: gained|lost|transferred, to_from: ""}]
     
+    # ── 配角深度（role != protagonist 时必填）──
+    role: protagonist           # protagonist | supporting | antagonist | background
+    supporting_role:            # 仅 role=supporting 时填写
+      # 功能定位（§17.8.1）
+      primary_function: ""      # plot_driver | mirror_contrast | world_window | emotion_regulator
+      secondary_function: ""    # 可选第二功能，重要配角必填
+      contrast_type: ""         # mirror_contrast专用：positive(正向衬托) | negative(反向对照)
+      world_aspect: ""          # world_window专用：展现的世界观侧面
+
+      # 独特性（§17.8.2 约束一）
+      signature_tag: ""         # 最鲜明的视觉/语言/行为特征（1个）
+      extreme_trait: ""         # 极致化的1-2种性格特质
+      tag_evolution: ""         # 标签如何随剧情演变（可选）
+
+      # 独立性（§17.8.2 约束二）
+      independent_goal: ""      # 独立于主角的个人目标（不提主角也能写出）
+      self_interest: ""         # 核心利益诉求
+      solo_activity: ""         # 不跟主角在一起时的典型活动
+
+      # 生命周期（§17.8.5）
+      lifecycle_stage: introduced  # introduced | deepened | climax | exited
+      introduction_chapter: 0
+      peak_chapter: 0           # 高光章节（0=待定）
+      exit_chapter: 0           # 退场章节（0=未退场）
+      exit_type: ""             # graceful_exit | heroic_death | betrayal | fade_out | transformed
+
+      # 必要性三问审查（§17.8.3）
+      necessity_check:
+        last_check_chapter: 0
+        can_remove: false       # Q1: 删掉还能走通？
+        view_differs: true      # Q2: 看法与主角不同？
+        has_solo_life: true     # Q3: 不跟主角时在忙什么？
+        action: keep            # keep | deepen | merge | remove
+    
     # ── 性格锚点（防止角色分裂）──
     key_traits: []              # 如 ["沉默寡言", "重信守诺", "不善表达感情"]
     speech_pattern: ""          # 说话风格，如 "简短有力，极少用语气词"
